@@ -25,9 +25,9 @@ MEASURING_TIME = 300
 STANDARD_QC = 120
 T_FIXTURE = 600
 
-EASY_COEFF = 1.0
-MEDIUM_COEFF = 1.5
-HARD_COEFF = 2.0
+EASY_COEFF = 0.3
+MEDIUM_COEFF = 1.0
+HARD_COEFF = 1.5
 
 PART_DIFFICULTY = EASY_COEFF
 
@@ -48,17 +48,16 @@ def parse_difficulty(setup):
     global PART_DIFFICULTY
     if setup.notes:
         try:
-            result = re.search(r'\[DIFFICULTY:?-?\s?(\w+)\]', setup.notes, re.IGNORECASE)
+            result = re.search(r'\[DIFF:?-?\s?(\w+)\]', setup.notes, re.IGNORECASE).group(1)
             if result:
-            #if result:
-            #    result = result.upper()
-            #    if result == 'EASY':
-            #        PART_DIFFICULTY = EASY_COEFF
-            #    elif result == 'MEDIUM':
-            #        PART_DIFFICULTY = MEDIUM_COEFF
-            #    elif result == 'HARD':
-            #       PART_DIFFICULTY = HARD_COEFF
-                pass
+                result = result.upper()
+                if result == 'E':
+                    PART_DIFFICULTY = EASY_COEFF
+                elif result == 'M':
+                    PART_DIFFICULTY = MEDIUM_COEFF
+                elif result == 'H':
+                   PART_DIFFICULTY = HARD_COEFF
+                
         except Exception as e:
             pass
 
@@ -158,3 +157,4 @@ def run(_context: str):
 
     except Exception as e:  
         ui.messageBox(f"{e}")
+
