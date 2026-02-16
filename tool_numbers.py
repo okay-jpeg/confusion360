@@ -17,22 +17,22 @@ setup_pattern = r'^OP\d+\s(ALU|POM|AISI|STEEL|COPPER|ERTALYTE)(\sG\d+)?$'
 tolerance_pattern = r'^\d+\.?\d*[a-zA-Z]\d+$'
 fixtures_pattern = r'(FXT|JAWS)'
 
-#TIME IN SECONDS. 
+#TIME IN SECONDS.
+
+#setup time
 MANUAL_TOOL_CHANGE_TIME = 300
-INITIAL_SETUP = 600
+INITIAL_SETUP = 1200
+
+#unit time
 CONSECUTIVE_SETUP = 300
-MEASURING_TIME = 300
-STANDARD_QC = 120
+MEASURING_TIME = 420
+STANDARD_QC = 300
 T_FIXTURE = 600
 
-EASY_COEFF = 1.0
-MEDIUM_COEFF = 1.5
-HARD_COEFF = 2.0
-
-PART_DIFFICULTY = EASY_COEFF
+FINE_TOLERANCES = False
+FUCKERY_COEFF = 1.0
 
 NUMBER_OF_PASSES = 7
-
 
 def time_human_readable(machining_seconds):
     seconds = machining_seconds % 60
@@ -44,27 +44,9 @@ def time_human_readable(machining_seconds):
     nice_time = f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}"
     return nice_time
 
-def parse_difficulty(setup):
-    global PART_DIFFICULTY
-    if setup.notes:
-        try:
-            result = re.search(r'\[DIFFICULTY:?-?\s?(\w+)\]', setup.notes, re.IGNORECASE)
-            if result:
-            #if result:
-            #    result = result.upper()
-            #    if result == 'EASY':
-            #        PART_DIFFICULTY = EASY_COEFF
-            #    elif result == 'MEDIUM':
-            #        PART_DIFFICULTY = MEDIUM_COEFF
-            #    elif result == 'HARD':
-            #       PART_DIFFICULTY = HARD_COEFF
-                pass
-        except Exception as e:
-            pass
-
 
 def run(_context: str):
-    global CONSECUTIVE_SETUP, STANDARD_QC
+    global FINE_TOLERANCES, FUCKERY_COEFF
 
     total_machining_time = 0
     time_spent_on_tolerances = 0
@@ -75,25 +57,28 @@ def run(_context: str):
     tolerances_list = []
     tool_list = []
     setups_with_fixture = 0
-    
+   
+
     try:
         text_palette.writeText(f"")
         text_palette.writeText(f"------------------------------------------------")
-        for setup in cam.setups: 
+        for setup in cam.setups:
             if re.search(setup_pattern, setup.name):
                 regular_setups.append(setup)
             elif re.search(fixtures_pattern, setup.name):
                 fixture_setups.append(setup)
             else:
                 other_setups.append(setup)
-                    
+                   
         for setup_count, setup in enumerate(regular_setups):
             text_palette.writeText(f"{setup.name}")
 
+            if re.search(r'FINE_TOLERANCES', setup.notes):
+                FINE_TOLERANCES = True
+                FUCKERY_COEFF = 1.5
+
             if re.search(r'FIXTURE_SETUPS', setup.notes):
                 setups_with_fixture = int(re.findall(r'\d+', setup.notes)[0])
-
-            parse_difficulty(setup)
 
             for op in setup.operations:
                 try:
@@ -106,16 +91,14 @@ def run(_context: str):
                         if tool_description not in tool_list:
                             text_palette.writeText(f"----{tool_description}")
                             tool_list.append(tool_description)
+                except:
+                    pass
 
-                    if re.search(tolerance_pattern, op_name):
-                        tolerances_list.append(op_name)
-                        tolerances_cycle_time += cam.getMachiningTime(op, 0,0,0).machiningTime * NUMBER_OF_PASSES
+                if re.search(tolerance_pattern, op_name):
+                    tolerances_list.append(op_name)
+                    tolerances_cycle_time += cam.getMachiningTime(op, 0,0,0).machiningTime * NUMBER_OF_PASSES
 
-                except Exception as e:
-                    ui.messageBox(f"Manual NC is causing issues")
-
-
-            if setup_count >= 1:
+            if setup_count >= 0:
                 total_machining_time += CONSECUTIVE_SETUP
 
             machine_seconds = cam.getMachiningTime(setup, 0, 0, 0).machiningTime
@@ -125,24 +108,27 @@ def run(_context: str):
             tool_changes += 1
             tool_change_time += MANUAL_TOOL_CHANGE_TIME
 
+        #if fixture_setups:
+        #    total_machining_time += T_FIXTURE
+
         # if tolerances are found, we measure each time we make a slight adjustment.
         if tolerances_list:
             time_spent_on_tolerances += MEASURING_TIME
-        else: 
+        else:
             time_spent_on_tolerances += STANDARD_QC
-        
-        STANDARD_QC *= PART_DIFFICULTY
-        CONSECUTIVE_SETUP *= PART_DIFFICULTY
+
         total_machining_time += tolerances_cycle_time
-        total_machining_time += tool_change_time
+        #total_machining_time += tool_change_time
         total_machining_time += time_spent_on_tolerances
+        total_machining_time *= FUCKERY_COEFF
         total_machining_time += T_FIXTURE * setups_with_fixture
 
         setup_time += tool_change_time
 
         text_palette.writeText(f"")
-        
-        text_palette.writeText(f"PART DIFFICULTY: {PART_DIFFICULTY}")
+        if FINE_TOLERANCES:
+            text_palette.writeText(f"Fine tolerances detected")
+            text_palette.writeText(f"---FUCKERY COEFFICIENT: {FUCKERY_COEFF}")
 
         text_palette.writeText(f"Setup time: {setup_time // 60} minutes")
         if setups_with_fixture:
