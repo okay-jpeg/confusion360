@@ -19,7 +19,7 @@ fixtures_pattern = r'(FXT|JAWS)'
 
 #TIME IN SECONDS. 
 MANUAL_TOOL_CHANGE_TIME = 300
-INITIAL_SETUP = 600
+INITIAL_SETUP = 1200
 CONSECUTIVE_SETUP = 300
 MEASURING_TIME = 300
 STANDARD_QC = 120
@@ -29,9 +29,9 @@ EASY_COEFF = 0.3
 MEDIUM_COEFF = 1.0
 HARD_COEFF = 1.5
 
-PART_DIFFICULTY = EASY_COEFF
+PART_DIFFICULTY = MEDIUM_COEFF
 
-NUMBER_OF_PASSES = 7
+NUMBER_OF_PASSES = 6
 
 
 def time_human_readable(machining_seconds):
@@ -45,19 +45,20 @@ def time_human_readable(machining_seconds):
     return nice_time
 
 def parse_difficulty(setup):
-    global PART_DIFFICULTY
+    difficulty = MEDIUM_COEFF
     if setup.notes:
         try:
-            result = re.search(r'\[DIFF:?-?\s?(\w+)\]', setup.notes, re.IGNORECASE).group(1)
+            result = re.search(r'\[DIFF:?-?\s?(\w+)\]', setup.notes, re.IGNORECASE)
             if result:
-                result = result.upper()
-                if result == 'E':
-                    PART_DIFFICULTY = EASY_COEFF
-                elif result == 'M':
-                    PART_DIFFICULTY = MEDIUM_COEFF
-                elif result == 'H':
-                   PART_DIFFICULTY = HARD_COEFF
-                
+            #if result:
+            #    result = result.upper()
+            #    if result == 'EASY':
+            #        PART_DIFFICULTY = EASY_COEFF
+            #    elif result == 'MEDIUM':
+            #        PART_DIFFICULTY = MEDIUM_COEFF
+            #    elif result == 'HARD':
+            #       PART_DIFFICULTY = HARD_COEFF
+                pass
         except Exception as e:
             pass
 
@@ -65,6 +66,8 @@ def parse_difficulty(setup):
 def run(_context: str):
     global CONSECUTIVE_SETUP, STANDARD_QC
 
+    meta_data_found = False
+    meta_data_created = False
     total_machining_time = 0
     time_spent_on_tolerances = 0
     tool_change_time = 0
@@ -85,7 +88,15 @@ def run(_context: str):
                 fixture_setups.append(setup)
             else:
                 other_setups.append(setup)
-                    
+
+        #create a metadata note for the program.        
+        first_setup = cam.setups.item(0)
+        if not first_setup.folders and not meta_data_created:
+            first_setup.folders.addFolder("metadata")
+            metadata = first_setup.folders.itemByName("metadata")
+            metadata.notes = "DIFF [M]\nFIXTURE_SETUPS [0]"
+
+
         for setup_count, setup in enumerate(regular_setups):
             text_palette.writeText(f"{setup.name}")
 
@@ -157,4 +168,3 @@ def run(_context: str):
 
     except Exception as e:  
         ui.messageBox(f"{e}")
-
