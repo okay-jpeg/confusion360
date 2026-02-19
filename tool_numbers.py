@@ -53,9 +53,13 @@ def create_metadata():
         #Create a basic template that holds difficulty and number of setups
         if metadata:
             metadata.notes = "DIFF [M]\nFIXTURE_SETUPS [0]"
+    return metadata
 
-def parse_metadata():
-    pass
+def parse_metadata(metadata):
+    difficulty = re.search(r'DIFF \[E|M|H\]', metadata.notes, re.I)
+    fixture_setups = re.search(r'FIXTURE_SETUPS \[\d+\]', metadata.notes)
+
+    return difficulty, fixture_setups
 
 def run(_context: str):
     total_machining_time = 0
@@ -80,6 +84,7 @@ def run(_context: str):
                 other_setups.append(setup)
 
         create_metadata()
+        parse_metadata()
 
         for setup_count, setup in enumerate(regular_setups):
             text_palette.writeText(f"{setup.name}")
@@ -145,3 +150,4 @@ def run(_context: str):
 
     except Exception as e:  
         ui.messageBox(f"{e}")
+
