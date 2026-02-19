@@ -33,7 +33,6 @@ PART_DIFFICULTY = MEDIUM_COEFF
 
 NUMBER_OF_PASSES = 6
 
-
 def time_human_readable(machining_seconds):
     seconds = machining_seconds % 60
     seconds_rem = machining_seconds // 60
@@ -60,10 +59,21 @@ def create_metadata():
     return metadata
 
 def parse_metadata(metadata):
+    global STANDARD_QC, CONSECUTIVE_SETUP
     difficulty = re.search(r'DIFF \[(E|M|H)\]', metadata.notes, re.I).group(1)
     fixture_setups = re.search(r'FIXTURE_SETUPS \[(\d+)\]', metadata.notes).group(1)
     fixture_setups = int(fixture_setups)
 
+    if difficulty == 'E' or 'e':
+        STANDARD_QC *= EASY_COEFF
+        CONSECUTIVE_SETUP *= EASY_COEFF
+    elif difficulty == 'M' or 'm':
+        STANDARD_QC *= MEDIUM_COEFF
+        CONSECUTIVE_SETUP *= MEDIUM_COEFF
+    elif difficulty == 'H' or 'h':
+        STANDARD_QC *= HARD_COEFF
+        CONSECUTIVE_SETUP *= HARD_COEFF
+        
     return difficulty, fixture_setups
 
 def run(_context: str):
@@ -114,7 +124,7 @@ def run(_context: str):
                 except Exception as e:
                     ui.messageBox(f"Manual NC is causing issues")
 
-            if setup_count >= 1:
+            if setup_count >= 0:
                 total_machining_time += CONSECUTIVE_SETUP
 
             machine_seconds = cam.getMachiningTime(setup, 0, 0, 0).machiningTime
@@ -130,17 +140,19 @@ def run(_context: str):
         else: 
             time_spent_on_tolerances += STANDARD_QC
 
+        text_palette.writeText(f"Consecutive setup {CONSECUTIVE_SETUP} standard qc {STANDARD_QC}")
         metadata = create_metadata()
         difficulty, fixture_setups = parse_metadata(metadata)
         
         total_machining_time += tolerances_cycle_time
         total_machining_time += tool_change_time
         total_machining_time += time_spent_on_tolerances
-        total_machining_time += T_FIXTURE * setups_with_fixture
+        total_machining_time += T_FIXTURE * fixture_setups
         setup_time += tool_change_time
 
         text_palette.writeText(f"")
-
+        
+        text_palette.writeText(f"Consecutive setup {CONSECUTIVE_SETUP} standard qc {STANDARD_QC}")
         text_palette.writeText(f"Difficulty: {difficulty} | Fixture setups {fixture_setups}")
         text_palette.writeText(f"Setup time: {setup_time // 60} minutes")
 
