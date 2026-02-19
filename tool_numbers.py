@@ -46,6 +46,7 @@ def time_human_readable(machining_seconds):
 
 def create_metadata():
     meta_data_created = False
+    metadata = None
     first_setup = cam.setups.item(0)
     if not first_setup.folders and not meta_data_created:
         first_setup.folders.addFolder("metadata")
@@ -53,11 +54,14 @@ def create_metadata():
         #Create a basic template that holds difficulty and number of setups
         if metadata:
             metadata.notes = "DIFF [M]\nFIXTURE_SETUPS [0]"
+    else:
+        metadata = first_setup.folders.itemByName("metadata")
+
     return metadata
 
 def parse_metadata(metadata):
-    difficulty = re.search(r'DIFF \[E|M|H\]', metadata.notes, re.I)
-    fixture_setups = re.search(r'FIXTURE_SETUPS \[\d+\]', metadata.notes)
+    difficulty = re.findall(r'DIFF \[E|M|H\]', metadata.notes, re.I)
+    fixture_setups = re.findall(r'FIXTURE_SETUPS \[\d+\]', metadata.notes)
 
     return difficulty, fixture_setups
 
@@ -83,8 +87,10 @@ def run(_context: str):
             else:
                 other_setups.append(setup)
 
-        create_metadata()
-        parse_metadata()
+        metadata = create_metadata()
+        diff, fs = parse_metadata(metadata)
+        #well shit.. need some thinking here. atleast it almost works as expected
+        text_palette.writeText(f"Difficulty: {diff} | Fixture setups {fs}")
 
         for setup_count, setup in enumerate(regular_setups):
             text_palette.writeText(f"{setup.name}")
