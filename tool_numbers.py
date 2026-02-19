@@ -44,30 +44,20 @@ def time_human_readable(machining_seconds):
     nice_time = f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}"
     return nice_time
 
-def parse_difficulty(setup):
-    difficulty = MEDIUM_COEFF
-    if setup.notes:
-        try:
-            result = re.search(r'\[DIFF:?-?\s?(\w+)\]', setup.notes, re.IGNORECASE)
-            if result:
-            #if result:
-            #    result = result.upper()
-            #    if result == 'EASY':
-            #        PART_DIFFICULTY = EASY_COEFF
-            #    elif result == 'MEDIUM':
-            #        PART_DIFFICULTY = MEDIUM_COEFF
-            #    elif result == 'HARD':
-            #       PART_DIFFICULTY = HARD_COEFF
-                pass
-        except Exception as e:
-            pass
+def create_metadata():
+    meta_data_created = False
+    first_setup = cam.setups.item(0)
+    if not first_setup.folders and not meta_data_created:
+        first_setup.folders.addFolder("metadata")
+        metadata = first_setup.folders.itemByName("metadata")
+        #Create a basic template that holds difficulty and number of setups
+        if metadata:
+            metadata.notes = "DIFF [M]\nFIXTURE_SETUPS [0]"
 
+def parse_metadata():
+    pass
 
 def run(_context: str):
-    global CONSECUTIVE_SETUP, STANDARD_QC
-
-    meta_data_found = False
-    meta_data_created = False
     total_machining_time = 0
     time_spent_on_tolerances = 0
     tool_change_time = 0
@@ -89,21 +79,13 @@ def run(_context: str):
             else:
                 other_setups.append(setup)
 
-        #create a metadata note for the program.        
-        first_setup = cam.setups.item(0)
-        if not first_setup.folders and not meta_data_created:
-            first_setup.folders.addFolder("metadata")
-            metadata = first_setup.folders.itemByName("metadata")
-            metadata.notes = "DIFF [M]\nFIXTURE_SETUPS [0]"
-
+        create_metadata()
 
         for setup_count, setup in enumerate(regular_setups):
             text_palette.writeText(f"{setup.name}")
 
             if re.search(r'FIXTURE_SETUPS', setup.notes):
                 setups_with_fixture = int(re.findall(r'\d+', setup.notes)[0])
-
-            parse_difficulty(setup)
 
             for op in setup.operations:
                 try:
@@ -124,7 +106,6 @@ def run(_context: str):
                 except Exception as e:
                     ui.messageBox(f"Manual NC is causing issues")
 
-
             if setup_count >= 1:
                 total_machining_time += CONSECUTIVE_SETUP
 
@@ -141,17 +122,13 @@ def run(_context: str):
         else: 
             time_spent_on_tolerances += STANDARD_QC
         
-        STANDARD_QC *= PART_DIFFICULTY
-        CONSECUTIVE_SETUP *= PART_DIFFICULTY
         total_machining_time += tolerances_cycle_time
         total_machining_time += tool_change_time
         total_machining_time += time_spent_on_tolerances
         total_machining_time += T_FIXTURE * setups_with_fixture
-
         setup_time += tool_change_time
 
         text_palette.writeText(f"")
-        
         text_palette.writeText(f"PART DIFFICULTY: {PART_DIFFICULTY}")
 
         text_palette.writeText(f"Setup time: {setup_time // 60} minutes")
