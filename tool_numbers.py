@@ -60,8 +60,9 @@ def create_metadata():
     return metadata
 
 def parse_metadata(metadata):
-    difficulty = re.findall(r'DIFF \[E|M|H\]', metadata.notes, re.I)
-    fixture_setups = re.findall(r'FIXTURE_SETUPS \[\d+\]', metadata.notes)
+    difficulty = re.search(r'DIFF \[(E|M|H)\]', metadata.notes, re.I).group(1)
+    fixture_setups = re.search(r'FIXTURE_SETUPS \[(\d+)\]', metadata.notes).group(1)
+    fixture_setups = int(fixture_setups)
 
     return difficulty, fixture_setups
 
@@ -87,10 +88,6 @@ def run(_context: str):
             else:
                 other_setups.append(setup)
 
-        metadata = create_metadata()
-        diff, fs = parse_metadata(metadata)
-        #well shit.. need some thinking here. atleast it almost works as expected
-        text_palette.writeText(f"Difficulty: {diff} | Fixture setups {fs}")
 
         for setup_count, setup in enumerate(regular_setups):
             text_palette.writeText(f"{setup.name}")
@@ -132,6 +129,9 @@ def run(_context: str):
             time_spent_on_tolerances += MEASURING_TIME
         else: 
             time_spent_on_tolerances += STANDARD_QC
+
+        metadata = create_metadata()
+        difficulty, fixture_setups = parse_metadata(metadata)
         
         total_machining_time += tolerances_cycle_time
         total_machining_time += tool_change_time
@@ -140,16 +140,13 @@ def run(_context: str):
         setup_time += tool_change_time
 
         text_palette.writeText(f"")
-        text_palette.writeText(f"PART DIFFICULTY: {PART_DIFFICULTY}")
 
+        text_palette.writeText(f"Difficulty: {difficulty} | Fixture setups {fixture_setups}")
         text_palette.writeText(f"Setup time: {setup_time // 60} minutes")
-        if setups_with_fixture:
-            text_palette.writeText(f"Setups requiring fixturing: {setups_with_fixture}")
 
         text_palette.writeText(f"Manual tool changes: {tool_changes}")
         if setups_with_fixture:
             text_palette.writeText(f"Fixture needed")
-        text_palette.writeText(f"Estimated time on tool changes: {tool_change_time // 60} minutes")
         text_palette.writeText(f"Tolerances found: {tolerances_list}")
         text_palette.writeText(f"Machining time: {time_human_readable(total_machining_time)}")
         text_palette.writeText(f"------------------------------------------------")
