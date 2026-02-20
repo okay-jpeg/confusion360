@@ -29,8 +29,6 @@ EASY_COEFF = 0.3
 MEDIUM_COEFF = 1.0
 HARD_COEFF = 1.5
 
-PART_DIFFICULTY = MEDIUM_COEFF
-
 NUMBER_OF_PASSES = 6
 
 def time_human_readable(machining_seconds):
@@ -59,24 +57,15 @@ def create_metadata():
     return metadata
 
 def parse_metadata(metadata):
-    global STANDARD_QC, CONSECUTIVE_SETUP
     difficulty = re.search(r'DIFF \[(E|M|H)\]', metadata.notes, re.I).group(1)
     fixture_setups = re.search(r'FIXTURE_SETUPS \[(\d+)\]', metadata.notes).group(1)
     fixture_setups = int(fixture_setups)
 
-    if difficulty == 'E' or 'e':
-        STANDARD_QC *= EASY_COEFF
-        CONSECUTIVE_SETUP *= EASY_COEFF
-    elif difficulty == 'M' or 'm':
-        STANDARD_QC *= MEDIUM_COEFF
-        CONSECUTIVE_SETUP *= MEDIUM_COEFF
-    elif difficulty == 'H' or 'h':
-        STANDARD_QC *= HARD_COEFF
-        CONSECUTIVE_SETUP *= HARD_COEFF
-        
     return difficulty, fixture_setups
 
 def run(_context: str):
+    global STANDARD_QC, CONSECUTIVE_SETUP
+
     total_machining_time = 0
     time_spent_on_tolerances = 0
     tool_change_time = 0
@@ -98,6 +87,19 @@ def run(_context: str):
             else:
                 other_setups.append(setup)
 
+
+        metadata = create_metadata()
+        difficulty, fixture_setups = parse_metadata(metadata)
+
+        if difficulty == 'E':
+            STANDARD_QC *= EASY_COEFF
+            CONSECUTIVE_SETUP *= EASY_COEFF
+        elif difficulty == 'M':
+            STANDARD_QC *= MEDIUM_COEFF
+            CONSECUTIVE_SETUP *= MEDIUM_COEFF
+        elif difficulty == 'H':
+            STANDARD_QC *= HARD_COEFF
+            CONSECUTIVE_SETUP *= HARD_COEFF
 
         for setup_count, setup in enumerate(regular_setups):
             text_palette.writeText(f"{setup.name}")
@@ -140,19 +142,16 @@ def run(_context: str):
         else: 
             time_spent_on_tolerances += STANDARD_QC
 
-        text_palette.writeText(f"Consecutive setup {CONSECUTIVE_SETUP} standard qc {STANDARD_QC}")
-        metadata = create_metadata()
-        difficulty, fixture_setups = parse_metadata(metadata)
         
         total_machining_time += tolerances_cycle_time
         total_machining_time += tool_change_time
         total_machining_time += time_spent_on_tolerances
         total_machining_time += T_FIXTURE * fixture_setups
+        total_machining_time += STANDARD_QC
         setup_time += tool_change_time
 
         text_palette.writeText(f"")
         
-        text_palette.writeText(f"Consecutive setup {CONSECUTIVE_SETUP} standard qc {STANDARD_QC}")
         text_palette.writeText(f"Difficulty: {difficulty} | Fixture setups {fixture_setups}")
         text_palette.writeText(f"Setup time: {setup_time // 60} minutes")
 
