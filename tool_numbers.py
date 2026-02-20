@@ -64,12 +64,12 @@ def parse_metadata(metadata):
     return difficulty, fixture_setups
 
 def run(_context: str):
-    global STANDARD_QC, CONSECUTIVE_SETUP
+    global STANDARD_QC, CONSECUTIVE_SETUP, INITIAL_SETUP
 
     total_machining_time = 0
     time_spent_on_tolerances = 0
     tool_change_time = 0
-    setup_time = INITIAL_SETUP
+    #setup_time = INITIAL_SETUP
     tool_changes = 0
     tolerances_cycle_time = 0
     tolerances_list = []
@@ -93,6 +93,7 @@ def run(_context: str):
 
         if difficulty == 'E':
             STANDARD_QC *= EASY_COEFF
+            INITIAL_SETUP *= EASY_COEFF
             CONSECUTIVE_SETUP *= EASY_COEFF
         elif difficulty == 'M':
             STANDARD_QC *= MEDIUM_COEFF
@@ -148,7 +149,7 @@ def run(_context: str):
         total_machining_time += time_spent_on_tolerances
         total_machining_time += T_FIXTURE * fixture_setups
         total_machining_time += STANDARD_QC
-        setup_time += tool_change_time
+        setup_time = INITIAL_SETUP + tool_change_time
 
         text_palette.writeText(f"")
         
