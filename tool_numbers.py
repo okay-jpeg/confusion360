@@ -3,6 +3,7 @@ import adsk.core
 import adsk.fusion
 import adsk.cam
 import re
+import math
 
 app = adsk.core.Application.get()
 ui  = app.userInterface
@@ -191,4 +192,5 @@ def run(_context: str):
 
     except Exception as e:  
         ui.messageBox(f"{e}")
+
 
