@@ -101,6 +101,9 @@ def run(_context: str):
     tolerances_list = []
     tool_list = []
     setups_with_fixture = 0
+    consecutive_setups = 0
+
+    unit_time = 0
     
     try:
         text_palette.writeText(f"")
@@ -110,7 +113,6 @@ def run(_context: str):
                 regular_setups.append(setup)
             else:
                 other_setups.append(setup)
-
 
         metadata = create_metadata()
         difficulty, fixture_setups = parse_metadata(metadata)
@@ -152,7 +154,8 @@ def run(_context: str):
                     ui.messageBox(f"Manual NC is causing issues")
 
             if setup_count >= 0:
-                total_machining_time += CONSECUTIVE_SETUP
+                #unit_time += CONSECUTIVE_SETUP
+                consecutive_setups += 1
 
             machine_seconds = cam.getMachiningTime(setup, 0, 0, 0).machiningTime
             total_machining_time += machine_seconds
@@ -168,29 +171,39 @@ def run(_context: str):
         else: 
             time_spent_on_tolerances += STANDARD_QC
 
-        
-        total_machining_time += tolerances_cycle_time
-        total_machining_time += tool_change_time
-        total_machining_time += time_spent_on_tolerances
-        total_machining_time += T_FIXTURE * fixture_setups
-        total_machining_time += STANDARD_QC
+        unit_time += total_machining_time
+        unit_time += tolerances_cycle_time
+        unit_time += time_spent_on_tolerances
+        unit_time += T_FIXTURE * fixture_setups
+        unit_time += consecutive_setups * CONSECUTIVE_SETUP
+        unit_time += STANDARD_QC
+
         setup_time = INITIAL_SETUP + tool_change_time
 
         length, width, height = get_stock_information() 
 
         text_palette.writeText(f"")
         text_palette.writeText(f"Stock:\t{length}  {width}  {height}") 
-        #text_palette.writeText(f"Difficulty: {difficulty} | Fixture setups {fixture_setups}")
         text_palette.writeText(f"Setup time: {setup_time // 60} minutes")
 
         text_palette.writeText(f"Manual tool changes: {tool_changes}")
         if setups_with_fixture:
             text_palette.writeText(f"Fixture needed")
-        text_palette.writeText(f"Tolerances found: {tolerances_list}")
-        text_palette.writeText(f"Machining time: {total_machining_time // 60} minutes")
+        if tolerances_list:
+            text_palette.writeText(f"Tolerances found: {tolerances_list}")
+        text_palette.writeText(f"Unit time: {unit_time // 60} minutes")
         text_palette.writeText(f"------------------------------------------------")
+    
+        text_palette.writeText("##################################")
+        text_palette.writeText(f"Machining time\t{total_machining_time // 60}")
+        text_palette.writeText(f"Tolerances cycle time\t{tolerances_cycle_time // 60}")
+        text_palette.writeText(f"Time spent on tolerances\t{time_spent_on_tolerances // 60}")
+        text_palette.writeText(f"Fixture time\t\t{T_FIXTURE * fixture_setups // 60}")
+        text_palette.writeText(f"Standard QC\t\t{STANDARD_QC // 60}")
+        text_palette.writeText(f"Consecutive setups\t{consecutive_setups * CONSECUTIVE_SETUP // 60}")
+
+        text_palette.writeText("##################################")
 
     except Exception as e:  
         ui.messageBox(f"{e}")
-
 
