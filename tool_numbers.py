@@ -13,7 +13,8 @@ text_palette = ui.palettes.itemById("TextCommands")
 
 regular_setups = []
 other_setups = []
-setup_pattern = r'^OP\d+\s(ALU|POM|AISI|STEEL|COPPER|ERTALYTE)(\sG\d+)?$'
+setup_pattern = r'^OP\d+\s(ALU|POM|AISI|STEEL|COPPER|ERTALYTE)'
+#setup_pattern = r'^OP\d+\s(ALU|POM|AISI|STEEL|COPPER|ERTALYTE)(\sG\d+)?$'
 tolerance_pattern = r'^\d+\.?\d*[a-zA-Z]\d+$'
 fixtures_pattern = r'(FXT|JAWS)'
 
@@ -50,7 +51,7 @@ def create_metadata():
         metadata = first_setup.folders.itemByName("metadata")
         #Create a basic template that holds difficulty and number of setups
         if metadata:
-            metadata.notes = "DIFF [M]\nFIXTURE_SETUPS [0]"
+            metadata.notes = "DIFF [M]\nFIXTURE_SETUPS [0]\nDETAILED_INFO [0]"
     else:
         metadata = first_setup.folders.itemByName("metadata")
 
@@ -108,11 +109,17 @@ def run(_context: str):
     try:
         text_palette.writeText(f"")
         text_palette.writeText(f"------------------------------------------------")
-        for setup in cam.setups: 
-            if re.search(setup_pattern, setup.name):
-                regular_setups.append(setup)
-            else:
-                other_setups.append(setup)
+        document_name = re.sub(r'\sv\d+', '', doc.name)
+        text_palette.writeText(f"{document_name}")
+        for setup in cam.setups:
+            try:
+                result = re.search(setup_pattern, setup.name).group(0)
+                if result:
+                    regular_setups.append(setup)
+                else:
+                    other_setups.append(setup)
+            except Exception as e:
+                ui.messageBox(f"{setup.name} name has incorrect name. Skipping.")
 
         metadata = create_metadata()
         difficulty, fixture_setups = parse_metadata(metadata)
@@ -154,7 +161,6 @@ def run(_context: str):
                     ui.messageBox(f"Manual NC is causing issues")
 
             if setup_count >= 0:
-                #unit_time += CONSECUTIVE_SETUP
                 consecutive_setups += 1
 
             machine_seconds = cam.getMachiningTime(setup, 0, 0, 0).machiningTime
@@ -183,27 +189,24 @@ def run(_context: str):
         length, width, height = get_stock_information() 
 
         text_palette.writeText(f"")
-        text_palette.writeText(f"Stock:\t{length}  {width}  {height}") 
-        text_palette.writeText(f"Setup time: {setup_time // 60} minutes")
+        text_palette.writeText(f"{'Stock:':<{50}}{int(length)}  {int(width)}  {int(height)}")
+        text_palette.writeText(f"{'Setup time:':<{44}}{setup_time // 60} minutes")
 
-        text_palette.writeText(f"Manual tool changes: {tool_changes}")
-        if setups_with_fixture:
-            text_palette.writeText(f"Fixture needed")
+        text_palette.writeText(f"{'Manual tool changes:':<{35}}{tool_changes}")
         if tolerances_list:
-            text_palette.writeText(f"Tolerances found: {tolerances_list}")
-        text_palette.writeText(f"Unit time: {unit_time // 60} minutes")
+            text_palette.writeText(f"{'Tolerances found:':<{39}}{list(tolerances_list)}")
+        text_palette.writeText(f"Unit time:\t\t{unit_time // 60} minutes")
         text_palette.writeText(f"------------------------------------------------")
-    
-        text_palette.writeText("##################################")
-        text_palette.writeText(f"Machining time\t{total_machining_time // 60}")
-        text_palette.writeText(f"Tolerances cycle time\t{tolerances_cycle_time // 60}")
-        text_palette.writeText(f"Time spent on tolerances\t{time_spent_on_tolerances // 60}")
-        text_palette.writeText(f"Fixture time\t\t{T_FIXTURE * fixture_setups // 60}")
-        text_palette.writeText(f"Standard QC\t\t{STANDARD_QC // 60}")
-        text_palette.writeText(f"Consecutive setups\t{consecutive_setups * CONSECUTIVE_SETUP // 60}")
-
-        text_palette.writeText("##################################")
+        
+        if 'DETAILED_INFO [1]' in metadata.notes:
+            text_palette.writeText("##################################")
+            text_palette.writeText(f"Machining time:{total_machining_time // 60:<15}")
+            text_palette.writeText(f"Tolerances cycle time\t{tolerances_cycle_time // 60}")
+            text_palette.writeText(f"Time spent on tolerances\t{time_spent_on_tolerances // 60}")
+            text_palette.writeText(f"Fixture time\t\t{T_FIXTURE * fixture_setups // 60}")
+            text_palette.writeText(f"Standard QC\t\t{STANDARD_QC // 60}")
+            text_palette.writeText(f"Consecutive setups\t{consecutive_setups * CONSECUTIVE_SETUP // 60}")
+            text_palette.writeText("##################################")
 
     except Exception as e:  
         ui.messageBox(f"{e}")
-
